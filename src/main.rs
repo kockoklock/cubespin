@@ -25,7 +25,7 @@ enum Side {
 
 fn create_side(point: &Point) -> Vec<Point>
 {
-    let dens: u32 = SIZE as u32;
+    let dens: u32 = SIZE as u32 * 2;
     let mut v: Vec<Point> = Vec::new();
     for x in (0..dens).map(|v| v as f32) {
         for y in (0..dens).map(|v| v as f32) {
@@ -56,7 +56,7 @@ fn create_all_sides(v: &mut Vec<Point>)
     }
 }
 
-fn rotate_x(point: &Point, rad: f32) -> Point 
+fn rotate_x(point: &Point, rad: f32) -> Point
 {
     Point {
         x: point.x,
@@ -66,7 +66,7 @@ fn rotate_x(point: &Point, rad: f32) -> Point
     }
 }
 
-fn rotate_y(point: &Point, rad: f32) -> Point 
+fn rotate_y(point: &Point, rad: f32) -> Point
 {
     Point {
         x: point.x * rad.cos() - point.z * rad.sin(),
@@ -76,7 +76,7 @@ fn rotate_y(point: &Point, rad: f32) -> Point
     }
 }
 
-fn rotate_z(point: &Point, rad: f32) -> Point 
+fn rotate_z(point: &Point, rad: f32) -> Point
 {
     Point {
         x: point.x * rad.cos() - point.y * rad.sin(),
@@ -104,11 +104,21 @@ fn display(dpv: &Vec<Vec<DisplayPoint>>)
 fn put_at(x: usize, y: usize, d: char)
 {
     let esc = 27 as char;
-    print!("{}[{};{}H", esc, y + 1, x + 1);
-    print!("{}", d);
+    print!("{}[{};{}H", esc, y + 1, x*2 + 1);
+    print!("{}", match d {
+        '#' => "\x1b[31m██",
+        '@' => "\x1b[32m██",
+        ';' => "\x1b[33m██",
+        '"' => "\x1b[34m██",
+        '.' => "\x1b[35m██",
+        '$' => "\x1b[36m██",
+        ' ' => "  ",
+        _ => "\x1b[0m!?" 
+    });
     print!("{}[1;1H", esc);
 }
 
+#[allow(unused)]
 fn clear()
 {
     let esc = 27 as char;
@@ -123,16 +133,16 @@ fn append_side(v: &mut Vec<Point>, d: &Side, c: char)
                 x: -SIZE/2f32,
                 y: -SIZE/2f32,
                 z: -SIZE/2f32,
-                d: c 
+                d: c
             }
         ).iter_mut()
-        .map(|p| match d { 
+        .map(|p| match d {
             Side::Top    => rotate_x(p,  PI/2f32),
             Side::Bottom => rotate_x(p, -PI/2f32),
             Side::Right  => rotate_y(p,  PI/2f32),
             Side::Left   => rotate_y(p, -PI/2f32),
             Side::Back   => rotate_y(p,  PI),
-            _ => rotate_z(p, 0f32) 
+            _ => rotate_z(p, 0f32)
         }).collect()
     );
 }
@@ -147,11 +157,11 @@ fn init_display_points(dps: &mut Vec<Vec<DisplayPoint>>, offset: &Point)
         dps.push(tmp);
     }
 }
-
+// (x, y, z) -> (x, y)
 fn prepare_display(dps: &mut Vec<Vec<DisplayPoint>>,
                    point: &Point, offset: &Point)
 {
-    let mut dpr: &mut DisplayPoint = dps 
+    let mut dpr: &mut DisplayPoint = dps
         .get_mut((point.y + offset.y) as usize)
         .unwrap()
         .get_mut((point.x + offset.x) as usize)
@@ -170,12 +180,12 @@ fn main()
         x: 5f32 + SIZE,
         y: SIZE,
         z: SIZE * 3f32,
-        d: 0 as char 
+        d: 0 as char
     };
     let rotation: Point = Point {
-        x: 0.03,
+        x: 0.05,
         y: 0.1,
-        z: 0.04,
+        z: 0.0,
         d: 0 as char
     };
     loop {
@@ -186,6 +196,6 @@ fn main()
             *point = rotate(point, &rotation);
         }
         display(&display_points);
-        std::thread::sleep(std::time::Duration::from_millis(20));
+        std::thread::sleep(std::time::Duration::from_millis(16));
     };
 }
