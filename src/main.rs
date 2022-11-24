@@ -14,7 +14,16 @@ struct DisplayPoint {
     d: char
 }
 
-fn fill(point: &Point) -> Vec<Point>
+enum Side {
+    Front,
+    Back,
+    Top,
+    Bottom,
+    Left,
+    Right
+}
+
+fn create_side(point: &Point) -> Vec<Point>
 {
     let dens: u32 = SIZE as u32;
     let mut v: Vec<Point> = Vec::new();
@@ -30,6 +39,21 @@ fn fill(point: &Point) -> Vec<Point>
         }
     }
     v
+}
+
+fn create_all_sides(v: &mut Vec<Point>)
+{
+    let side_chars = ['#','$','@','"',';','.'];
+    for (i, s) in [
+        Side::Front,
+        Side::Back,
+        Side::Left,
+        Side::Right,
+        Side::Top,
+        Side::Bottom
+    ].iter().enumerate() {
+        append_side(v, s, side_chars[i]);
+    }
 }
 
 fn rotate_x(point: &Point, rad: f32) -> Point 
@@ -62,9 +86,9 @@ fn rotate_z(point: &Point, rad: f32) -> Point
     }
 }
 
-fn rotate(point: &Point, rx: f32, ry: f32, rz: f32) -> Point
+fn rotate(point: &Point, r: &Point) -> Point
 {
-    rotate_x(&rotate_y(&rotate_z(point, rz), ry), rx)
+    rotate_x(&rotate_y(&rotate_z(point, r.z), r.y), r.x)
 }
 
 fn display(dpv: &Vec<Vec<DisplayPoint>>)
@@ -91,19 +115,10 @@ fn clear()
     print!("{}[2J{}[1;1H", esc, esc);
 }
 
-enum Side {
-    Front,
-    Back,
-    Top,
-    Bottom,
-    Left,
-    Right
-}
-
-fn append_rot(v: &mut Vec<Point>, d: &Side, c: char)
+fn append_side(v: &mut Vec<Point>, d: &Side, c: char)
 {
     v.append(
-        &mut fill(
+        &mut create_side(
             &Point {
                 x: -SIZE/2f32,
                 y: -SIZE/2f32,
@@ -122,52 +137,55 @@ fn append_rot(v: &mut Vec<Point>, d: &Side, c: char)
     );
 }
 
+fn init_display_points(dps: &mut Vec<Vec<DisplayPoint>>, offset: &Point)
+{
+    for _ in 0..((2f32 * SIZE + offset.y) as u32) {
+        let mut tmp: Vec<DisplayPoint> = Vec::new();
+        for _ in 0..((2f32 * SIZE + offset.x) as u32) {
+            tmp.push(DisplayPoint { z: -1000f32, d: ' ' });
+        }
+        dps.push(tmp);
+    }
+}
+
+fn prepare_display(dps: &mut Vec<Vec<DisplayPoint>>,
+                   point: &Point, offset: &Point)
+{
+    let mut dpr: &mut DisplayPoint = dps 
+        .get_mut((point.y + offset.y) as usize)
+        .unwrap()
+        .get_mut((point.x + offset.x) as usize)
+        .unwrap();
+    if point.z > dpr.z {
+        dpr.z = point.z;
+        dpr.d = point.d;
+    }
+}
+
 fn main()
 {
     let mut points: Vec<Point> = Vec::new();
-    let side_chars = ['#','$','@','"',';','.'];
-    for (i, s) in [
-        Side::Front,
-        Side::Back,
-        Side::Left,
-        Side::Right,
-        Side::Top,
-        Side::Bottom
-    ].iter().enumerate() {
-        append_rot(&mut points, s, side_chars[i]);
-    }
+    create_all_sides(&mut points);
     let offset = &Point {
         x: 5f32 + SIZE,
         y: SIZE,
         z: SIZE * 3f32,
         d: 0 as char 
     };
-    let (rx, ry, rz): (f32, f32, f32) = (
-        0.03, 0.1, 0.04
-    );
+    let rotation: Point = Point {
+        x: 0.03,
+        y: 0.1,
+        z: 0.04,
+        d: 0 as char
+    };
     loop {
         let mut display_points: Vec<Vec<DisplayPoint>> = Vec::new();
-        for _ in 0..((2f32 * SIZE + offset.y) as u32) {
-            let mut tmp: Vec<DisplayPoint> = Vec::new();
-            for _ in 0..((2f32 * SIZE + offset.x) as u32) {
-                tmp.push(DisplayPoint { z: -1000f32, d: ' ' });
-            }
-            display_points.push(tmp);
-        }
+        init_display_points(&mut display_points, offset);
         for point in points.iter_mut() {
-            let mut dpr: &mut DisplayPoint = display_points
-                .get_mut((point.y + offset.y) as usize)
-                .unwrap()
-                .get_mut((point.x + offset.x) as usize)
-                .unwrap();
-            if point.z > dpr.z {
-                dpr.z = point.z;
-                dpr.d = point.d;
-            }
-            *point = rotate(point, rx, ry, rz);
+            prepare_display(&mut display_points, point, offset);
+            *point = rotate(point, &rotation);
         }
         display(&display_points);
         std::thread::sleep(std::time::Duration::from_millis(20));
-        clear();
     };
 }
