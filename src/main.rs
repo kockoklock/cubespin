@@ -1,4 +1,5 @@
 use std::{f32::consts::PI, io::Write};
+use device_query::{DeviceState, Keycode, DeviceQuery};
 
 const SIZE: f32 = 40f32;
 
@@ -182,16 +183,27 @@ fn main()
         z: SIZE * 3f32,
         d: 0 as char
     };
-    let rotation: Point = Point {
-        x: 0.05,
-        y: 0.1,
+    let mut rotation: Point = Point {
+        x: 0.0,
+        y: 0.0,
         z: 0.0,
         d: 0 as char
     };
+    let dev_state = DeviceState::new();
     loop {
         let mut display_points: Vec<Vec<DisplayPoint>> = Vec::new();
         init_display_points(&mut display_points, offset);
+        let keys: Vec<Keycode> = dev_state.get_keys();
         for point in points.iter_mut() {
+            rotation.x = if keys.contains(&Keycode::W) { 0.1 }
+                else if keys.contains(&Keycode::S) { -0.1 }
+                else { 0.0 };
+            rotation.y = if keys.contains(&Keycode::A) { -0.1 }
+                else if keys.contains(&Keycode::D) { 0.1 }
+                else { 0.0 };
+            rotation.z = if keys.contains(&Keycode::Q) { -0.1 }
+                else if keys.contains(&Keycode::E) { 0.1 }
+                else { 0.0 };
             prepare_display(&mut display_points, point, offset);
             *point = rotate(point, &rotation);
         }
